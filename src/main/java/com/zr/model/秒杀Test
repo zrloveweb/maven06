@@ -1,0 +1,76 @@
+package com.jeeplus.modules;
+
+import org.springframework.util.CollectionUtils;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Transaction;
+
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Test01 implements Runnable {
+    String goodsNum = "goodsNum";// 监视keys
+    Jedis jedis = new Jedis("127.0.0.1", 6379);
+
+    public Test01() {
+    }
+    public static void main(String[] args) {
+        final String watchkeys = "watchkeys";
+        ExecutorService executor = Executors.newFixedThreadPool(100);
+
+        for (int i = 0; i < 1000; i++) {// 测试一万人同时访问
+            executor.execute(new Test01());
+        }
+        executor.shutdown();
+    }
+    public int aa;
+    public void run() {
+        try {
+            jedis.watch(goodsNum);// watchkeys
+
+            int val = Integer.parseInt(jedis.get(goodsNum));
+            System.out.println("...................,,,,,,"+val);
+            if (val <= 0) {
+                System.out.println("商品已抢完，" + "0" + "---> 抢购失败 XXX");
+                return;
+            }
+                Transaction tx = jedis.multi();// 开启事务
+
+                tx.decr("goodsNum");
+
+                List<Object> exec = tx.exec();// 提交事务，如果此时watchkeys被改动了，则返回null
+                if(exec != null && exec.size()>0){
+                    System.out.println("抢购成功："+val--);
+                }else{
+                    System.out.println("抢购失败");
+                    Thread.sleep(1);
+                }
+          /*  if (CollectionUtils.isEmpty(exec)) {
+                System.out.println(  "---> 抢购失败，继续抢购");
+                Thread.sleep(1);
+            } else {
+                exec.forEach(
+                        aa -> {
+                            String succStr =
+
+                                            "===========================> 抢购到第【"
+                                            + ((100 - val) + 1)
+                                            + "】份商品，该商品剩余："
+                                            + aa.toString();
+                            System.out.println(aa+".....");
+                            System.out.println(succStr);
+                            jedis.set("goodsResult:"  , succStr); // 业务代码，处理抢购成功
+                        });
+            }*/
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            jedis.close();
+        }
+    }
+
+
+}
