@@ -1,0 +1,5 @@
+com\zr\mapper\RoleMapper.class
+com\zr\model\Role.class
+com\zr\mapper\UserMapper.class
+com\zr\model\Test.class
+com\zr\model\User.class
